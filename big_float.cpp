@@ -1,5 +1,169 @@
 #include "big_float.h"
+#include "core/error/error_macros.h"
+#include "core/math/math_funcs.h"
 #include "core/object/class_db.h"
+#include "core/object/ref_counted.h"
+#include "modules/bigfloat/backend/backend.h"
+#include <cstdint>
+
+bool BigFloat::_variant_to_impl(const Variant &p_val, BigFloatImpl &r_out) {
+	switch (p_val.get_type()) {
+		case Variant::INT:
+			r_out = BigFloatImpl::from_int(p_val);
+			return true;
+		case Variant::FLOAT: {
+			double d = p_val;
+			ERR_FAIL_COND_V_MSG(!Math::is_finite(d), false, "BigFloat: NaN and infinity are not yet supported");
+			return true;
+		}
+		case Variant::STRING: {
+			r_out = BigFloatImpl::from_string(p_val);
+			return true;
+		}
+		case Variant::OBJECT: {
+			Ref<BigFloat> b = p_val;
+			ERR_FAIL_COND_V_MSG(b.is_null(), false, "BigNumber: invalid object");
+			r_out = b->value;
+			return true;
+		}
+		default:
+			ERR_FAIL_V_MSG(false, "BigFloat: unsupported type");
+	}
+
+	return false;
+}
+
+Ref<BigFloat> BigFloat::from_int(int64_t p_value) {
+	Ref<BigFloat> b;
+	b.instantiate();
+	b->value = BigFloatImpl::from_int(p_value);
+	return b;
+}
+
+Ref<BigFloat> BigFloat::from_float(double p_value) {
+	Ref<BigFloat> b;
+	b.instantiate();
+	b->value = BigFloatImpl::from_double(p_value);
+	return b;
+}
+
+Ref<BigFloat> BigFloat::add_assign(const Variant& p_val) {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>(this));
+	value += other;
+	return Ref<BigFloat>(this);
+}
+
+Ref<BigFloat> BigFloat::sub_assign(const Variant &p_val) {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>(this));
+	value -= other;
+	return Ref<BigFloat>(this);
+}
+
+Ref<BigFloat> BigFloat::mul_assign(const Variant &p_val) {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>(this));
+	value *= other;
+	return Ref<BigFloat>(this);
+}
+
+Ref<BigFloat> BigFloat::div_assign(const Variant &p_val) {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>(this));
+	value /= other;
+	return Ref<BigFloat>(this);
+}
+
+Ref<BigFloat> BigFloat::add(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>());
+
+	Ref<BigFloat> result;
+	result.instantiate();
+	result->value = value + other;
+	return result;
+}
+
+Ref<BigFloat> BigFloat::sub(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>());
+
+	Ref<BigFloat> result;
+	result.instantiate();
+	result->value = value - other;
+	return result;
+}
+
+Ref<BigFloat> BigFloat::mul(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>());
+
+	Ref<BigFloat> result;
+	result.instantiate();
+	result->value = value * other;
+	return result;
+}
+
+Ref<BigFloat> BigFloat::div(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>());
+
+	Ref<BigFloat> result;
+	result.instantiate();
+	result->value = value / other;
+	return result;
+}
+
+String BigFloat::_to_string() {
+	return value.to_string();
+}
+
+String BigFloat::to_plain_scientific() const {
+	return value.to_plain_scientific();
+}
+
+String BigFloat::to_scientific() const {
+	return String();
+}
+
+String BigFloat::to_aa() const {
+	return String();
+}
+
+String BigFloat::to_metric_name() const {
+	return String();
+}
+
+String BigFloat::to_metric_symbol() const {
+	return String();
+}
+
+String BigFloat::to_short_scale() const {
+	return String();
+}
+
+void BigFloat::_bind_methods() {
+	ClassDB::bind_static_method("BigFloat", D_METHOD("from_int", "value"), &BigFloat::from_int);
+	ClassDB::bind_static_method("BigFloat", D_METHOD("from_float", "value"), &BigFloat::from_float);
+
+	ClassDB::bind_method(D_METHOD("add_assign", "value"), &BigFloat::add_assign);
+	ClassDB::bind_method(D_METHOD("sub_assign", "value"), &BigFloat::sub_assign);
+	ClassDB::bind_method(D_METHOD("mul_assign", "value"), &BigFloat::mul_assign);
+	ClassDB::bind_method(D_METHOD("div_assign", "value"), &BigFloat::div_assign);
+
+	ClassDB::bind_method(D_METHOD("add", "value"), &BigFloat::add);
+	ClassDB::bind_method(D_METHOD("sub", "value"), &BigFloat::sub);
+	ClassDB::bind_method(D_METHOD("mul", "value"), &BigFloat::mul);
+	ClassDB::bind_method(D_METHOD("div", "value"), &BigFloat::div);
+
+	ClassDB::bind_method(D_METHOD("to_plain_scientific"), &BigFloat::to_plain_scientific);
+	ClassDB::bind_method(D_METHOD("to_scientific"), &BigFloat::to_scientific);
+	ClassDB::bind_method(D_METHOD("to_aa"), &BigFloat::to_aa);
+	ClassDB::bind_method(D_METHOD("to_metric_name"), &BigFloat::to_metric_name);
+	ClassDB::bind_method(D_METHOD("to_metric_symbol"), &BigFloat::to_metric_symbol);
+	ClassDB::bind_method(D_METHOD("to_short_scale"), &BigFloat::to_short_scale);
+}
 
 const double BigNumber::MANTISSA_MAX = 1209600.0;
 const double BigNumber::MANTISSA_PRECISION = 0.0000001;
