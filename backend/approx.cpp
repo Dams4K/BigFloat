@@ -2,9 +2,7 @@
 #include "core/math/math_funcs.h"
 #include "core/typedefs.h"
 #include "modules/bigfloat/backend/backend.h"
-#include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 
 namespace bigfloat_backend {
 
@@ -17,7 +15,11 @@ Approx Approx::from_int(int64_t p_value) {
 }
 
 Approx Approx::from_double(double p_value) {
-	return from_parts(p_value, 0);
+	if (Math::is_finite(p_value)) {
+		return from_parts(p_value, 0);
+	} else {
+		return from_parts(0.0, 0);
+	}
 }
 
 Approx Approx::from_parts(double p_mantissa, int64_t p_exponent) {
@@ -78,6 +80,80 @@ int Approx::cmp(const Approx &p_other) const {
 	return mantissa > p_other.mantissa ? 1 : 0;
 }
 
+Approx& Approx::floor_assign() {
+	if (is_zero() || exponent >= MANTISSA_DIGITS) {
+		return *this;
+	}
+
+	if (exponent < 0) {
+		mantissa = mantissa > 0.0 ? 0.0 : -1.0;
+		exponent = 0;
+		return *this;
+	}
+
+	mantissa = Math::floor(mantissa * Math::pow(10.0, exponent));
+	exponent = 0;
+	normalize();
+	return *this;
+}
+
+Approx Approx::floor() const {
+	Approx r = *this;
+	return r.floor_assign();
+}
+
+Approx& Approx::absolute_assign() {
+	mantissa = Math::abs(mantissa);
+	return *this;
+}
+
+Approx Approx::absolute() const {
+	Approx r = *this;
+	return r.absolute_assign();
+}
+
+Approx& Approx::sqrt_assign() {
+	if (mantissa == 0.0) {
+		return *this;
+	}
+
+	if (exponent % 2 == 0) {
+		mantissa = Math::sqrt(mantissa);
+		exponent /= 2;
+	} else {
+		mantissa = Math::sqrt(mantissa * 10.0);
+		exponent = (exponent - 1) / 2;
+	}
+
+	normalize();
+	return *this;
+}
+
+Approx Approx::sqrt() const {
+	Approx r = *this;
+	return r.sqrt_assign();
+}
+
+Approx& Approx::pow_assign(const Approx& p_other) {
+	if (p_other.is_zero()) {
+		mantissa = 1.0;
+		exponent = 0;
+		return *this;
+	}
+
+	if (is_zero()) {
+		return *this;
+	}
+
+
+
+	return *this;
+}
+
+Approx Approx::pow(const Approx& p_other) const {
+	Approx r = *this;
+	return r.pow_assign(p_other);
+}
 
 Approx& Approx::operator+=(const Approx& p_other) {
 	if (p_other.is_zero()) {
@@ -89,10 +165,11 @@ Approx& Approx::operator+=(const Approx& p_other) {
 	}
 
 	int64_t diff = p_other.exponent - exponent;
-	if (diff > MAX_DIGITS) {
+	if (diff > MANTISSA_DIGITS) {
 		*this = p_other;
 		return *this;
-	} else if (diff < -MAX_DIGITS) {
+	}
+	if (diff < -MANTISSA_DIGITS) {
 		return *this;
 	}
 
@@ -145,8 +222,19 @@ Approx& Approx::operator/=(const Approx &p_other) {
 	return *this;
 }
 
+Approx& Approx::operator%=(const Approx& p_other) {
+	Approx quotient = *this / p_other;
+	if (quotient.exponent >= MANTISSA_DIGITS-2) {
+		mantissa = 0.0;
+		exponent = 0;
+		return *this;
+	}
+
+	return *this -= quotient.floor_assign() * p_other;
+}
+
 double Approx::to_double() const {
-	return 0.0;
+	return mantissa * Math::pow(10.0, exponent);
 }
 
 DecimalParts Approx::to_decimal_parts(int p_precision, RoundMode p_round_mode) const {

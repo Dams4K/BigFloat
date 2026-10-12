@@ -11,7 +11,7 @@ struct Approx {
 	// A double preserves ~15.95 decimal digits (53 bits of significand).
 	// Beyond this exponent difference, the smaller operand is absorbed
 	// by rounding and no longer affects the sum.
-	static constexpr int64_t MAX_DIGITS = 17;
+	static constexpr int64_t MANTISSA_DIGITS = 16;
 
 	double mantissa = 0.0;
 	int64_t exponent = 0;
@@ -27,27 +27,34 @@ struct Approx {
 		return mantissa == 0.0;
 	}
 
+	Approx& floor_assign();
+	Approx floor() const;
+
+	Approx& absolute_assign();
+	Approx absolute() const;
+
+	Approx& sqrt_assign();
+	Approx sqrt() const;
+
+	Approx& pow_assign(const Approx& p_other);
+	Approx pow(const Approx& p_other) const;
+
 	inline Approx operator-() const {
 		Approx r = *this;
 		r.mantissa = -r.mantissa;
 		return r;
-	};
+	}
 
 	Approx& operator+=(const Approx& p_other);
 	inline Approx& operator-=(const Approx& p_other) {
 		return *this += -p_other;
-	};
+	}
 	Approx& operator*=(const Approx& p_other);
 	Approx& operator/=(const Approx& p_other);
+	Approx& operator%=(const Approx& p_other);
 
 	DecimalParts to_decimal_parts(int p_precision, RoundMode p_round_mode) const;
-
 	double to_double() const;
-	String to_plain_scientific() const {
-		return String::num(mantissa) + "e" + String::num_int64(exponent);
-	}
-	String to_scientific() const;
-	String as_prefix() const;
 };
 
 
@@ -71,6 +78,11 @@ inline Approx operator/(Approx p_a, const Approx& p_b) {
 	return p_a;
 }
 
+inline Approx operator%(Approx p_a, const Approx& p_b) {
+	p_a %= p_b;
+	return p_a;
+}
+
 inline bool operator<(const Approx& p_a, const Approx& p_b) {
 	return p_a.cmp(p_b) < 0;
 }
@@ -79,7 +91,7 @@ inline bool operator<=(const Approx& p_a, const Approx& p_b) {
 	return p_a.cmp(p_b) <= 0;
 }
 
-inline bool operator >(const Approx& p_a, const Approx& p_b) {
+inline bool operator>(const Approx& p_a, const Approx& p_b) {
 	return p_a.cmp(p_b) > 0;
 }
 
@@ -88,11 +100,12 @@ inline bool operator>=(const Approx& p_a, const Approx& p_b) {
 }
 
 inline bool operator==(const Approx& p_a, const Approx& p_b) {
-	return p_a.mantissa == p_b.mantissa && p_a.exponent == p_b.mantissa;
+	return p_a.mantissa == p_b.mantissa && p_a.exponent == p_b.exponent;
 }
 
 inline bool operator!=(const Approx& p_a, const Approx& p_b) {
 	return !(p_a == p_b);
 }
+
 
 }

@@ -3,7 +3,26 @@
 #include "core/math/math_funcs.h"
 #include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
-#include "modules/bigfloat/backend/backend.h"
+
+const char *METRIC_SYMBOLS[] = {
+	"", "k", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q",
+	"V", "U", "Td", "S", "Ri", "Qx", "Pp", "O", "N", "Mi"
+};
+
+const char *METRIC_NAMES[] = {
+	"", "kilo", "mega", "giga", "tera", "peta", "exa", "zetta", "yotta", "ronna", "quetta",
+	"vunda", "uda", "treda", "sorta", "rinta", "quexa", "pepta", "ocha", "nena", "ming"
+};
+
+const char *SHORT_SCALE_NAMES[] = {
+	"", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion",
+	"decillion", "undecillion", "duodecillion", "tredecillion", "quattuordecillion", "quindecillion", "sexdecillion", "septendecillion", "octodecillion", "novemdecillion"
+};
+
+const char *ALPHABET[] = {
+	"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+	"n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
+};
 
 bool BigFloat::_variant_to_impl(const Variant &p_val, BigFloatImpl &r_out) {
 	switch (p_val.get_type()) {
@@ -44,6 +63,42 @@ Ref<BigFloat> BigFloat::from_float(double p_value) {
 	b.instantiate();
 	b->value = BigFloatImpl::from_double(p_value);
 	return b;
+}
+
+bool BigFloat::is_less_than(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value < other;
+}
+
+bool BigFloat::is_greater_than(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value > other;
+}
+
+bool BigFloat::is_less_than_or_equal_to(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value <= other;
+}
+
+bool BigFloat::is_greater_than_or_equal_to(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value >= other;
+}
+
+bool BigFloat::is_equal_to(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value == other;
+}
+
+bool BigFloat::is_different_to(const Variant &p_val) const {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), false);
+	return value != other;
 }
 
 Ref<BigFloat> BigFloat::add_assign(const Variant& p_val) {
@@ -114,15 +169,22 @@ Ref<BigFloat> BigFloat::div(const Variant &p_val) const {
 	return result;
 }
 
+Ref<BigFloat> BigFloat::mod_assign(const Variant &p_val) {
+	BigFloatImpl other;
+	ERR_FAIL_COND_V(!_variant_to_impl(p_val, other), Ref<BigFloat>(this));
+	value %= other;
+	return Ref<BigFloat>(this);
+}
+
 String BigFloat::_to_string() {
 	return to_plain_string(20);
 }
 
-String BigFloat::to_plain_string(int max_digits) const {
-	bigfloat_backend::DecimalParts p = value.to_decimal_parts(15, bigfloat_backend::ROUND);
+String BigFloat::to_plain_string(int max_digits, RoundMode mode) const {
+	DecimalParts p = value.to_decimal_parts(15, mode);
 	int point = p.exp10 + 1; // one number before the decimal part
 	if (Math::abs(point) > max_digits) {
-		return to_plain_scientific();
+		// return to_plain_scientific();
 	}
 
 	String s;
@@ -140,9 +202,6 @@ double BigFloat::to_float() const {
 	return value.to_double();
 }
 
-String BigFloat::to_plain_scientific() const {
-	return value.to_plain_scientific();
-}
 
 String BigFloat::to_scientific() const {
 	return String();
@@ -178,37 +237,30 @@ void BigFloat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mul", "value"), &BigFloat::mul);
 	ClassDB::bind_method(D_METHOD("div", "value"), &BigFloat::div);
 
-	ClassDB::bind_method(D_METHOD("to_plain_scientific"), &BigFloat::to_plain_scientific);
+	ClassDB::bind_method(D_METHOD("is_less_than", "other"), &BigFloat::is_less_than);
+	ClassDB::bind_method(D_METHOD("is_greater_than", "other"), &BigFloat::is_greater_than);
+	ClassDB::bind_method(D_METHOD("is_less_than_or_equal_to", "other"), &BigFloat::is_less_than_or_equal_to);
+	ClassDB::bind_method(D_METHOD("is_greater_than_or_equal_to", "other"), &BigFloat::is_greater_than_or_equal_to);
+	ClassDB::bind_method(D_METHOD("is_equal_to", "other"), &BigFloat::is_equal_to);
+	ClassDB::bind_method(D_METHOD("is_different_to", "other"), &BigFloat::is_different_to);
+
+	ClassDB::bind_method(D_METHOD("to_plain_string", "max_digits", "mode"), &BigFloat::to_plain_string, DEFVAL(1000), DEFVAL(RoundMode::ROUND));
+
+	// ClassDB::bind_method(D_METHOD("to_plain_scientific"), &BigFloat::to_plain_scientific);
 	ClassDB::bind_method(D_METHOD("to_scientific"), &BigFloat::to_scientific);
 	ClassDB::bind_method(D_METHOD("to_aa"), &BigFloat::to_aa);
 	ClassDB::bind_method(D_METHOD("to_metric_name"), &BigFloat::to_metric_name);
 	ClassDB::bind_method(D_METHOD("to_metric_symbol"), &BigFloat::to_metric_symbol);
 	ClassDB::bind_method(D_METHOD("to_short_scale"), &BigFloat::to_short_scale);
+
+	BIND_ENUM_CONSTANT(RoundMode::TRUNCATE);
+	BIND_ENUM_CONSTANT(RoundMode::ROUND);
 }
 
 const double BigNumber::MANTISSA_MAX = 1209600.0;
 const double BigNumber::MANTISSA_PRECISION = 0.0000001;
 
 namespace {
-const char *METRIC_SYMBOLS[] = {
-	"", "k", "M", "G", "T", "P", "E", "Z", "Y", "R", "Q",
-	"V", "U", "Td", "S", "Ri", "Qx", "Pp", "O", "N", "Mi"
-};
-
-const char *METRIC_NAMES[] = {
-	"", "kilo", "mega", "giga", "tera", "peta", "exa", "zetta", "yotta", "ronna", "quetta",
-	"vunda", "uda", "treda", "sorta", "rinta", "quexa", "pepta", "ocha", "nena", "ming"
-};
-
-const char *SHORT_SCALE_NAMES[] = {
-	"", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion",
-	"decillion", "undecillion", "duodecillion", "tredecillion", "quattuordecillion", "quindecillion", "sexdecillion", "septendecillion", "octodecillion", "novemdecillion"
-};
-
-const char *ALPHABET[] = {
-	"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-	"n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
-};
 
 // ln(10)
 const double LOG_10 = 2.302585092994046;
