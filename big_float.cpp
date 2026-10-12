@@ -4,7 +4,6 @@
 #include "core/object/class_db.h"
 #include "core/object/ref_counted.h"
 #include "modules/bigfloat/backend/backend.h"
-#include <cstdint>
 
 bool BigFloat::_variant_to_impl(const Variant &p_val, BigFloatImpl &r_out) {
 	switch (p_val.get_type()) {
@@ -116,7 +115,29 @@ Ref<BigFloat> BigFloat::div(const Variant &p_val) const {
 }
 
 String BigFloat::_to_string() {
-	return value.to_string();
+	return to_plain_string(20);
+}
+
+String BigFloat::to_plain_string(int max_digits) const {
+	bigfloat_backend::DecimalParts p = value.to_decimal_parts(15, bigfloat_backend::ROUND);
+	int point = p.exp10 + 1; // one number before the decimal part
+	if (Math::abs(point) > max_digits) {
+		return to_plain_scientific();
+	}
+
+	String s;
+	if (point < 0) {
+		s = "0." + String("0").repeat(-point) + p.digits;
+	} else if (point >= p.digits.length()) {
+		s = p.digits + String("0").repeat(point - p.digits.length());
+	} else {
+		s = p.digits.substr(0, point) + "." + p.digits.substr(point);
+	}
+	return (p.neg ? "-" : "") + s;
+}
+
+double BigFloat::to_float() const {
+	return value.to_double();
 }
 
 String BigFloat::to_plain_scientific() const {

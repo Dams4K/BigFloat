@@ -5,7 +5,7 @@
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
 
-#include "backend/backend.h"
+#include "backend/big_float_impl.h"
 
 class BigFloat : public RefCounted {
 	GDCLASS(BigFloat, RefCounted)
@@ -38,6 +38,9 @@ public:
 	Ref<BigFloat> div(const Variant& p_val) const;
 
 	String _to_string() override;
+	String to_plain_string(int max_digits = 1000) const;
+
+	double to_float() const;
 	String to_plain_scientific() const;
 	String to_scientific() const;
 	String to_aa() const;

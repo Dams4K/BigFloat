@@ -1,5 +1,10 @@
 #include "approx.h"
 #include "core/math/math_funcs.h"
+#include "core/typedefs.h"
+#include "modules/bigfloat/backend/backend.h"
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 
 namespace bigfloat_backend {
 
@@ -84,10 +89,10 @@ Approx& Approx::operator+=(const Approx& p_other) {
 	}
 
 	int64_t diff = p_other.exponent - exponent;
-	if (diff > ABSORB_DIGITS) {
+	if (diff > MAX_DIGITS) {
 		*this = p_other;
 		return *this;
-	} else if (diff < -ABSORB_DIGITS) {
+	} else if (diff < -MAX_DIGITS) {
 		return *this;
 	}
 
@@ -140,10 +145,54 @@ Approx& Approx::operator/=(const Approx &p_other) {
 	return *this;
 }
 
-String Approx::to_string() const {
-	return String("soon");
+double Approx::to_double() const {
+	return 0.0;
 }
 
+DecimalParts Approx::to_decimal_parts(int p_precision, RoundMode p_round_mode) const {
+	DecimalParts p;
+	if (is_zero()) {
+		p.digits = "0";
+		p.exp10 = 0;
+		return p;
+	}
 
+	p.neg = mantissa < 0.0;
+	double m = Math::abs(mantissa);
+
+	p_precision = CLAMP(p_precision, 1, MAX_DIGITS);
+
+	char buf[80];
+	if (p_round_mode == TRUNCATE) {
+		snprintf(buf, sizeof(buf), "%.60e", m);
+	} else {
+		snprintf(buf, sizeof(buf), "%.*e", p_precision-1, m);
+	}
+
+	String digits;
+
+	int i = 0;
+	for (; buf[i] != '\0' && buf[i] != 'e'; ++i) {
+		if (buf[i] != '.') {
+			digits += buf[i];
+		}
+	}
+
+	if (digits.length() > p_precision) {
+		digits = digits.substr(0, p_precision);
+	}
+
+	// In round mode, 9.99 => 1.00+e01, so we add 1 to the exponent
+	int64_t e_printf = atoll(buf + i + 1);
+	p.exp10 = exponent + e_printf;
+
+	int end = digits.length();
+	while (end > 1 && digits[end-1] == U'0') {
+		--end;
+	}
+	p.digits = digits.substr(0, end);
+
+	return p;
+}
 
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/string/ustring.h"
-#include <cstdint>
+#include "backend.h"
 
 namespace bigfloat_backend {
 
@@ -11,7 +11,7 @@ struct Approx {
 	// A double preserves ~15.95 decimal digits (53 bits of significand).
 	// Beyond this exponent difference, the smaller operand is absorbed
 	// by rounding and no longer affects the sum.
-	static constexpr int64_t ABSORB_DIGITS = 17;
+	static constexpr int64_t MAX_DIGITS = 17;
 
 	double mantissa = 0.0;
 	int64_t exponent = 0;
@@ -40,7 +40,9 @@ struct Approx {
 	Approx& operator*=(const Approx& p_other);
 	Approx& operator/=(const Approx& p_other);
 
-	String to_string() const;
+	DecimalParts to_decimal_parts(int p_precision, RoundMode p_round_mode) const;
+
+	double to_double() const;
 	String to_plain_scientific() const {
 		return String::num(mantissa) + "e" + String::num_int64(exponent);
 	}
