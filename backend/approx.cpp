@@ -160,8 +160,6 @@ DecimalParts Approx::to_decimal_parts(int p_precision, RoundMode p_round_mode) c
 	p.neg = mantissa < 0.0;
 	double m = Math::abs(mantissa);
 
-	p_precision = CLAMP(p_precision, 1, MAX_DIGITS);
-
 	char buf[80];
 	if (p_round_mode == TRUNCATE) {
 		snprintf(buf, sizeof(buf), "%.60e", m);
