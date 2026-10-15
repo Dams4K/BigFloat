@@ -27,6 +27,9 @@ struct Approx {
 		return mantissa == 0.0;
 	}
 
+	Approx& ceil_assign();
+	Approx ceil() const;
+
 	Approx& floor_assign();
 	Approx floor() const;
 
@@ -106,6 +109,5 @@ inline bool operator==(const Approx& p_a, const Approx& p_b) {
 inline bool operator!=(const Approx& p_a, const Approx& p_b) {
 	return !(p_a == p_b);
 }
-
 
 }

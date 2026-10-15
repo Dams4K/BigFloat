@@ -80,6 +80,28 @@ int Approx::cmp(const Approx &p_other) const {
 	return mantissa > p_other.mantissa ? 1 : 0;
 }
 
+Approx& Approx::ceil_assign() {
+	if (is_zero() || exponent >= MANTISSA_DIGITS) {
+		return *this;
+	}
+
+	if (exponent < 0) {
+		mantissa = mantissa > 0.0 ? 1.0 : 0.0;
+		exponent = 0;
+		return *this;
+	}
+
+	mantissa = Math::ceil(mantissa * Math::pow(10.0, exponent));
+	exponent = 0;
+	normalize();
+	return *this;
+}
+
+Approx Approx::ceil() const {
+	Approx r = *this;
+	return r.ceil_assign();
+}
+
 Approx& Approx::floor_assign() {
 	if (is_zero() || exponent >= MANTISSA_DIGITS) {
 		return *this;
@@ -145,7 +167,12 @@ Approx& Approx::pow_assign(const Approx& p_other) {
 		return *this;
 	}
 
-
+	// bool resultNegative = false;
+	// if (mantissa < 0.0 && p_other.exponent < MANTISSA_DIGITS) {
+	// 	// With an exponent too big, the last digits are "0" so
+	// 	// the whole number is even, a negative result is impossible
+	// 	resultNegative = Math::fmod(p_other.to_double(), 2.0) != 0.0;
+	// }
 
 	return *this;
 }
