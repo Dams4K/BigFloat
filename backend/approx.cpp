@@ -3,6 +3,7 @@
 #include "core/typedefs.h"
 #include "modules/bigfloat/backend/backend.h"
 #include <cstdio>
+#include <cstdlib>
 
 namespace bigfloat_backend {
 
